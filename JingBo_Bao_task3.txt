@@ -1,0 +1,56 @@
+#!/usr/bin/env python  
+
+import rospy
+
+from geometry_msgs.msg import Twist
+from math import pi
+
+class TurtlebotDriving ():
+    def __init__(self):
+       
+        rospy.init_node('out_and_back', anonymous=False)
+    
+        rospy.on_shutdown(self.shutdown) 
+      
+        self.cmd_vel = rospy.Publisher('/cmd_vel', Twist, queue_size=1) 
+        rate = 10 
+        
+        r = rospy.Rate(rate)
+        # Loop through the two legs of the trip  
+        for i in range(5): 
+            t = rospy.Time.now().to_sec()
+            while rospy.Time.now().to_sec() - t < rospy.Duration(3).to_sec():
+                rospy.loginfo("trrrrtttt..")
+                rospy.loginfo(t)
+                rospy.loginfo("current")
+                rospy.loginfo(rospy.Time.now().to_sec())
+                move_cmd = Twist()
+                move_cmd.linear.x = 0.2
+                move_cmd.linear.y = 0
+                move_cmd.linear.z = 0
+
+                self.cmd_vel.publish(move_cmd)
+                r.sleep()
+            rospy.loginfo("iiiiiii")
+            rospy.loginfo(i)
+            move_cmd = Twist()
+            move_cmd.angular.x = 0
+            move_cmd.angular.y = 0
+            move_cmd.angular.z = pi/2
+            self.cmd_vel.publish(move_cmd)
+            rospy.sleep(1)
+      
+        self.cmd_vel.publish(Twist())
+
+      
+    def shutdown(self):
+       
+        rospy.loginfo("Stopping the robot...")
+        self.cmd_vel.publish(Twist())
+        rospy.sleep(1)
+
+if __name__ == '__main__':
+    try:
+        TurtlebotDriving ()
+    except:
+        rospy.loginfo("TurtlebotDriving node terminated.")
