@@ -13,25 +13,24 @@ class Turtlebot():
         rospy.init_node("turtlebot_move")
         rospy.loginfo("Press CTRL + C to terminate")
         rospy.on_shutdown(self.stop)
-        self.pose = Pose2D()
         
+	#Setting all values to 0 and setting angular velocity to 0.2rad/s
+	self.pose = Pose2D()
         self.current_x = 0.0
         self.current_y = 0.0
-       
+        self.distance = 0
+	self.r = rospy.Rate(30)
+
         self.turn = Twist()
         self.stop_turn = Twist()
         self.stop_turn.angular.z = 0.0
         self.turn.angular.z = 0.2
 
-    
-        self.odom_sub = rospy.Subscriber("odom", Odometry, self.odom_callback)
-
         self.vel = Twist()
         self.vel_pub = rospy.Publisher("cmd_vel", Twist, queue_size=10)
-
-        self.distance = 0
-        self.r = rospy.Rate(30)
-
+	self.odom_sub = rospy.Subscriber("odom", Odometry, self.odom_callback)
+        
+        
         try:
             self.run()
         except rospy.ROSInterruptException:
@@ -41,9 +40,11 @@ class Turtlebot():
 
     def run(self):
 
+	#Loop through to complete single square trip.
         i = 0
         while i<4:
-
+	
+   	    #Travel 0.2m/s whilst odom distance traveled is less than 1m.
             while(round(self.distance,2)<1):
                
                 move_cmd = Twist()
@@ -51,80 +52,59 @@ class Turtlebot():
                 move_cmd.linear.y = 0
                 move_cmd.linear.z = 0      
                 self.vel_pub.publish(move_cmd)
-                # print("Distance",self.distance)  
                 self.r.sleep()
+
             self.stop()
               
- 
-            if i == 0 or i == 1: 
-                print("rotation",i)
-                while (abs(round(self.pose.theta,2)) < round(self.rotation_theta(i),3)):
-                    # print("abspose",abs(self.pose.theta))
-                    # print("now",self.pose.theta)
-            
+	    #Calculating the target theta value by adding rad90 to current pose
+ 	    current_rotation = self.pose.theta
+	    new_rotation = current_rotation + radians(90)
+
+            if i == 0 or i == 1 : 
+                while (abs(round(self.pose.theta,2)) < round(new_rotation,3)):
+
+		    #As pose.theta is capped at 3.14, if the target value is greater than this it must be adjusted.
+		    if(new_rotation>3.149):
+			if(abs(round(self.pose.theta,2))==3.14):
+				new_rotation = 3.149 - (new_rotation-3.149)
+			
                     self.vel_pub.publish(self.turn)
                     self.r.sleep()
 
                 self.stop
                 
-            print("current theta",self.pose.theta)
-            if i ==2 or i==3 :
-                print("rotation",i)
-                while (abs(round(self.pose.theta,2)) > round(self.rotation_theta(i),3)):
-                    # print("abspose",abs(self.pose.theta))
-                    # print("now",self.pose.theta)
-                    self.vel_pub.publish(self.turn)
+            if  i==2 or i==3 :
+                while (abs(round(self.pose.theta,2)) > abs(round(new_rotation,3))):
+
+		    if(new_rotation>3.149):
+			if(abs(round(self.pose.theta,2))==3.14):
+				new_rotation = 3.149 - (new_rotation-3.149)		    
+
+	            self.vel_pub.publish(self.turn)
                     self.r.sleep()
 
-                    if i ==3 :
-                        i=i+1
-
                 self.stop
+
             i = i+1
-            # print("else",self.pose.theta)
-            # print("iiiiiiii",i)
 
         self.stop
-        rospy.loginfo("Action successfully.")
-        # rospy.spin() 
+        rospy.loginfo("Action Complete.")
 
                             
 
-    def rotation_theta(self, z):
-       
-        if z==0:
-            return radians(90)
-            
-        if z==1:
-            return 3.139
-            
-        if z==2:
-            return radians(90)
-          
-        if z==3:
-            return radians(0)
-        if z>3:
-            return 4
-
+    #Stopping sequence which resets all velocities to 0
     def stop(self):
         self.current_x = self.pose.x
         self.current_y = self.pose.y
-        # send zero velocity to robot
+        
         self.vel.linear.x = 0
         self.vel.angular.z = 0
         self.vel_pub.publish(self.vel)
         rospy.sleep(1)
 
-    def stop_move(self):
-        self.current_x = self.pose.x
-        self.current_y = self.pose.y
-        stop_move()
-        self.vel_pub.publish(self.vel)
-        print("turn90")    
     
+    #Odom Callback which returns values of pose orientation which we translate to self.pose
     def odom_callback(self, msg):
-        # get pose = (x, y, theta) from odometry topic
-        # rospy.loginfo("ttt")
         quarternion = [msg.pose.pose.orientation.x,msg.pose.pose.orientation.y,\
                     msg.pose.pose.orientation.z, msg.pose.pose.orientation.w]
         (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(quarternion)
@@ -132,6 +112,7 @@ class Turtlebot():
         self.pose.x = msg.pose.pose.position.x
         self.pose.y = msg.pose.pose.position.y
         
+	#Calculating distance using pythagoras.
         self.distance = sqrt(((self.pose.x - self.current_x)**2)+((self.pose.y - self.current_y)**2))       
            
     
