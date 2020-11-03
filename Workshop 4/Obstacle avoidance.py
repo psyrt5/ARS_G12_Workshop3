@@ -25,6 +25,7 @@ class Obstacle():
             if i <= 15 or i > 335:
                 if msg.ranges[1] >= self.LIDAR_ERR:
                     self.scan_filter.append(msg.ranges[i])
+                    
         
     def obstacle(self):
         self.twist = Twist()
@@ -33,16 +34,17 @@ class Obstacle():
             
             if min(self.scan_filter) < 0.5:
                 self.twist.linear.x = 0.0
-                self.twist.angular.z = 0.2
+                self.twist.angular.z = 0.8
                 self._cmd_pub.publish(self.twist)
                 rospy.loginfo('Stop!')
+                
             
 
             else:
-                self.twist.linear.x = 0.2
+                self.twist.linear.x = 0.3
                 self.twist.angular.z = 0.0
                 rospy.loginfo('distance of the obstacle : %f', min(self.scan_filter))
-
+                
             self._cmd_pub.publish(self.twist)
 
         self.stop
