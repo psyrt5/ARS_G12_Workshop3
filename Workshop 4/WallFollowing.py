@@ -22,12 +22,16 @@ class WallFollowing():
 
     def run(self):
         while(True):
-            if self.right_distance < 0.7:
+            if self.right_distance < 1:
                 
                 info = Twist()
                 info.angular.x = 0
                 info.angular.y = 0
-                info.angular.z = ((1-self.right_distance)-0.5) * (abs(((1-self.right_distance)-0.5)) * 5)
+                if self.right_distance < 0.5:
+                    info.angular.z = ((1-self.right_distance)-0.5)*((1-self.right_distance)-0.5)*5
+                else:
+                    info.angular.z = ((1-self.right_distance)-0.5)*abs(((1-self.right_distance)-0.5))*3
+                #info.angular.z = ((1-self.right_distance)-0.5) * (abs(((1-self.right_distance)-0.5)) * 5)
                 info.linear.y = 0
                 info.linear.z = 0
                 info.linear.x = 0.2
