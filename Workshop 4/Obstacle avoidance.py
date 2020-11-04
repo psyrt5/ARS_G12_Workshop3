@@ -2,49 +2,46 @@ import rospy
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
 
-
-ranges = []
-def scan_callback(msg):
-    global ranges
-    ranges = msg.ranges
- 
-
 class Obstacle():
     def __init__(self):
         self.LIDAR_ERR = 0.05
+        self._sub_scan = rospy.Subscriber("scan", LaserScan, self.scan_callback)
         self._cmd_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
-        self.obstacle()
+        # self.obstacle()
+        self.distance = 0
+        try:
+            self.run()
+        except rospy.ROSInterruptException:
+            rospy.loginfo("Action terminated.")
        
 
-    def get_scan(self):
+
+    def scan_callback(self,msg):
         # msg = rospy.wait_for_message("scan", LaserScan, self.scan_callback)
-        # pich up the LaserScan data
-        msg = rospy.wait_for_message("scan", LaserScan)
+        rospy.loginfo('begin!')
         self.scan_filter = []
         for i in range(360):
             if i <= 15 or i > 335:
-                if msg.ranges[1] >= self.LIDAR_ERR:
+                if msg.ranges[i] >= self.LIDAR_ERR:
                     self.scan_filter.append(msg.ranges[i])
-                    
-        
-    def obstacle(self):
+        self.distance = min(self.scan_filter)
+    
+    def run(self):
         self.twist = Twist()
         while not rospy.is_shutdown():
-            self.get_scan()
+            # self.get_scan()
             
-            if min(self.scan_filter) < 0.5:
+            if self.distance < 0.5:
                 self.twist.linear.x = 0.0
-                self.twist.angular.z = 0.8
+                self.twist.angular.z = 0.3
                 self._cmd_pub.publish(self.twist)
                 rospy.loginfo('Stop!')
-                
-            
 
             else:
-                self.twist.linear.x = 0.3
+                self.twist.linear.x = 0.2
                 self.twist.angular.z = 0.0
-                rospy.loginfo('distance of the obstacle : %f', min(self.scan_filter))
-                
+                rospy.loginfo('distance of the obstacle : %f', self.distance)
+
             self._cmd_pub.publish(self.twist)
 
         self.stop
@@ -52,6 +49,7 @@ class Obstacle():
 
 
     def stop(self):
+
         self.twist.linear.x = 0
         self.twist.angular.z = 0
         self._cmd_pub.publish(self.twist)
@@ -61,7 +59,7 @@ class Obstacle():
 def main():
     rospy.init_node('turtlebot_scan')
     try:
-        Obstacle()
+        obstacle = Obstacle()
     except rospy.ROSInterruptException:
         pass
 
