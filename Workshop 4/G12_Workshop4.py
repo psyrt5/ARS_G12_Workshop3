@@ -23,6 +23,11 @@ class Obstacle():
 	self.LIDAR_ERR = 0.05
  	self.obs_distance = 0
         self.distance = 0
+	self.wall_detect = True
+   	self.right_distance = 0.0
+	self.current_x =0.0
+	self.current_y =0.0
+
 
 	#Setting Twist angular velocity to 0.2rad/s
         self.turn = Twist()
@@ -51,7 +56,6 @@ class Obstacle():
 
 	    #Travel 0.2m/s whilst odom distance traveled is less than 3m.
             while(round(self.distance,2)<3):
-		rospy.loginfo('Straight Line Distance = %f', self.distance)
 		
 		#If an object is <0.5m away, rotate 0.3rad/s
             	if self.obs_distance < 0.5:
@@ -62,11 +66,22 @@ class Obstacle():
 			#Updated current_x/y to handle new starting position
 	      	        self.current_x = self.pose.x
 	                self.current_y = self.pose.y
-	                rospy.loginfo('Obstacle Detected - Rotating')
+	                print('Obstacle Detected - Rotating')
+
+		elif self.wall_detect ==True:
+			print("Wall Detected")
+
+			if self.right_distance < 0.5:
+                    		self.twist.angular.z = ((1-self.right_distance)-0.5)*((1-self.right_distance)-0.5)*5
+                	else:
+                    		self.twist.angular.z = ((1-self.right_distance)-0.5)*abs(((1-self.right_distance)-0.5))*3
+			
+			self.twist.linear.x = 0.2			
+			self._cmd_pub.publish(self.twist)
+
        	        else:
 			self.twist.linear.x = 0.2
                 	self.twist.angular.z = 0.0
-	                rospy.loginfo('Obstacle Distance : %f', self.obs_distance)
 			self._cmd_pub.publish(self.twist)
 
 		
@@ -76,7 +91,7 @@ class Obstacle():
 	    
 	    #print(new_rotation, "  -  ",self.pose.theta)
             while (abs(round(self.pose.theta,2)) < round(new_rotation,3)):
-		
+		print("Travelled 3m - Rotating")
  		#As pose.theta is capped at 3.14, if the target value is greater than this it must be adjusted.
 		if(new_rotation>3.149):
 			if(abs(round(self.pose.theta,2))==3.14):
@@ -103,10 +118,26 @@ class Obstacle():
 
     def scan_callback(self,msg):
         self.scan_filter = []
+	minRightDistance = 1
+	count=0
+
         for i in range(360):
+	    if i>=250 and i<=290:
+		if msg.ranges[i] < 1:
+			count=count+1
+			if msg.ranges[i]<minRightDistance:
+				minRightDistance = msg.ranges[i]
+			
             if i <= 15 or i > 335:
                 if msg.ranges[i] >= self.LIDAR_ERR:
                     self.scan_filter.append(msg.ranges[i])
+	
+	if(count>35):
+		self.wall_detect = True
+	else:
+		self.wall_detect = False
+
+        self.right_distance = minRightDistance
         self.obs_distance = min(self.scan_filter)
 
   
