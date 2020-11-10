@@ -59,18 +59,20 @@ class Obstacle():
 		
 		#If an object is <0.5m away, rotate 0.3rad/s
             	if self.obs_distance < 0.5:
+			print('Obstacle Detected - Rotating')
 	                self.twist.linear.x = 0.0
 	                self.twist.angular.z = 0.3
 	                self._cmd_pub.publish(self.twist)
 			
-			#Updated current_x/y to handle new starting position
+			#Updated current_x/y to handle new starting position. Reset 3m count when obstacle is encountered.
 	      	        self.current_x = self.pose.x
 	                self.current_y = self.pose.y
-	                print('Obstacle Detected - Rotating')
+	                
 
 		elif self.wall_detect ==True:
 			print("Wall Detected")
-
+			
+			#If too close to the wall turn outwards with a proportionate angle, otherwise turn in.
 			if self.right_distance < 0.5:
                     		self.twist.angular.z = ((1-self.right_distance)-0.5)*((1-self.right_distance)-0.5)*5
                 	else:
@@ -85,14 +87,15 @@ class Obstacle():
 			self._cmd_pub.publish(self.twist)
 
 		
-	    #Calculating the target theta value by adding random angle to current pose
+	   
+	    #Calculating the new theta value by adding a random angle to current pose
 	    new_rotation = self.pose.theta + radians(random.randint(0, 360))
 		
-	    
-	    #print(new_rotation, "  -  ",self.pose.theta)
+	    #Rotating anti-clockwise until new rotation is met
             while (abs(round(self.pose.theta,2)) < round(new_rotation,3)):
 		print("Travelled 3m - Rotating")
- 		#As pose.theta is capped at 3.14, if the target value is greater than this it must be adjusted.
+
+ 		#As the max pose.theta value is 3.14, if the target value is greater than this it must be adjusted.
 		if(new_rotation>3.149):
 			if(abs(round(self.pose.theta,2))==3.14):
 		 		new_rotation = 3.149 - (new_rotation-3.149)
@@ -122,20 +125,29 @@ class Obstacle():
 	count=0
 
         for i in range(360):
+	    #Scanning the right hand side if there is an object <1m away
 	    if i>=250 and i<=290:
 		if msg.ranges[i] < 1:
+
+			#Add one to the object detection count
 			count=count+1
+
+			#Save the value of the smallest distance to the wall on the righthand side
 			if msg.ranges[i]<minRightDistance:
 				minRightDistance = msg.ranges[i]
-			
+	
+	    #Obstacle detected ahead!	
             if i <= 15 or i > 335:
                 if msg.ranges[i] >= self.LIDAR_ERR:
                     self.scan_filter.append(msg.ranges[i])
 	
+
+	#If a majority of the right side laser readings indicate an object the set wall_detect to true.
 	if(count>35):
 		self.wall_detect = True
 	else:
 		self.wall_detect = False
+
 
         self.right_distance = minRightDistance
         self.obs_distance = min(self.scan_filter)
