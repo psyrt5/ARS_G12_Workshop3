@@ -21,7 +21,6 @@ class Follower:
       self._sub_scan = rospy.Subscriber("scan", LaserScan, self.scan_callback)
       self.image_sub = rospy.Subscriber('camera/rgb/image_raw', Image, self.image_callback)
       
-	
       #Initialising all variable values
       self.pose = Pose2D()   
       self.r = rospy.Rate(30)
@@ -35,10 +34,34 @@ class Follower:
       self.turn.angular.z = 0.2
 
 
-   def image_callback(self, msg):
+
+
+   #Using Laser scanner callback to detect obstacles
+   def scan_callback(self,msg):
+         self.scan_filter = []
+
+         for i in range(360):	
+             if i <= 15 or i > 335:
+                 if msg.ranges[i] >= self.LIDAR_ERR:
+                     self.scan_filter.append(msg.ranges[i])
 	
+         self.obs_distance = min(self.scan_filter)
+  
+   #Using the image_callback function to obtain an image and convert it to hsv
+   def image_callback(self, msg):
+
       #Getting the image and converting to hsv values
       image = self.bridge.imgmsg_to_cv2(msg,desired_encoding='bgr8')
+
+      #Processing the image data
+      self.image_processing(image)
+
+
+
+
+   #The main function which handles the image processing
+   def image_processing(self,image):
+
       (h, w) = image.shape[:2]
       hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
@@ -49,7 +72,6 @@ class Follower:
       # find the colors within the specified green colour boundaries and apply the mask
       mask = cv2.inRange(hsv, lower_green, upper_green)
 
-
       #output = cv2.bitwise_and(hsv, hsv, mask = mask)
       #output = cv2.resize(output, (w/4,h/4))
       #cv2.imshow("Masked Image", output)
@@ -59,7 +81,12 @@ class Follower:
       #Getting the height, width, depth of image shape.
       h, w, d = image.shape
       M = cv2.moments(mask)
+      
+      self.detect_green(image,M,h,w,d)
 
+
+   #Function for producing movement based on what the robot can see
+   def detect_green(self,image,M,h,w,d):
 
       #If a green shape is located
       if M['m00'] > 0:
@@ -77,8 +104,9 @@ class Follower:
 	 self.twist.linear.x = 0.2
 
          self.cmd_vel.publish(self.twist)
+
       
-      #If there are no green objects in sight
+      #If there are no green objects in sight move until hitting an obstacle
       else:
 	 
 	 #If an object is <0.5m away, rotate 0.3rad/s
@@ -97,7 +125,10 @@ class Follower:
       #cv2.waitKey(0)
       self.stop
       rospy.loginfo("Action successfully.")
+     
 
+
+   #Stopping the robot
    def stop(self):
 
          self.twist.linear.x = 0
@@ -105,16 +136,6 @@ class Follower:
          self._cmd_pub.publish(self.twist)
          rospy.sleep(1)
 
-   #Using Laser scanner callback to detect objects
-   def scan_callback(self,msg):
-         self.scan_filter = []
-
-         for i in range(360):	
-             if i <= 15 or i > 335:
-                 if msg.ranges[i] >= self.LIDAR_ERR:
-                     self.scan_filter.append(msg.ranges[i])
-	
-         self.obs_distance = min(self.scan_filter)
 
 rospy.init_node('follower')
 follower = Follower()
