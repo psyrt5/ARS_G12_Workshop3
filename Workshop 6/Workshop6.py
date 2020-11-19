@@ -12,8 +12,6 @@ from geometry_msgs.msg import Pose2D, Point
 from nav_msgs.msg import OccupancyGrid
 from actionlib_msgs.msg import *
 
-
-
 class Workshop6:
     def __init__(self):
         #Subscribing and publishing to the relevant topics
@@ -144,7 +142,7 @@ class Workshop6:
 
         while (ac.get_state() != GoalStatus.SUCCEEDED):
             if(round(self.pose.x,2) !=round(self.current_x,2) or round(self.pose.y,2) !=round(self.current_y,2)):
-                self.to_grid(self.pose.x,self.pose.y,-5,-5,self.size,self.size,1)
+                self.to_grid(self.pose.x,self.pose.y,-8,-8,self.size,self.size,1)
                 self.current_x = self.pose.x
                 self.current_y = self.pose.y
                 
