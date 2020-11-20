@@ -153,6 +153,9 @@ class Workshop6:
                 self.to_grid(self.pose.x,self.pose.y,-8,-8,self.size,self.size,1)
                 self.current_x = self.pose.x
                 self.current_y = self.pose.y
+
+        #SHOW VISUAL
+        self.print_grid()
                 
         rospy.loginfo("You have reached the destination")
         return True
@@ -170,7 +173,27 @@ class Workshop6:
             print("Updating")
             self.current_gx = gx
             self.current_gy = gy
-        
+
+    #Print the map    
+    def print_grid(self):
+        x = 0
+        #Start with X axis
+        while x < self.size:
+            y = 0
+            string = ""
+            #Print Y axis
+            while y < self.size:
+                #If the Grid value = -1, then we haven't been there
+                if self.grid[self.to_index(x,y,20)] == -1:
+                    #Append the X character to the string message to be printed
+                    string += "X"
+                #If the Grid value isn't -1, then we have been there
+                else:
+                    #Append the space character to the string message to be printed
+                    string += " "
+                y += 1
+            print(string)
+            x += 1
 
    #If you are initialising the bottom left grid cell to 1,1 not 0,0
     def to_world(self, gx, gy, origin_x, origin_y, size_x, size_y, resolution):
@@ -189,10 +212,11 @@ class Workshop6:
     
     def update_grid(self, gx, gy):
         if self.grid[self.to_index(gx,gy,20)] == -1:
-            print(str(gx) + "x : " + str(gy) + "y - Is a new cell! :)")
+            #print(str(gx) + "x : " + str(gy) + "y - Is a new cell! :)")
             self.grid[self.to_index(gx,gy,20)] = 1
         else:
-            print(str(gx) + "x : " + str(gy) + "y - Is an old cell! :(")
+            pass
+            #print(str(gx) + "x : " + str(gy) + "y - Is an old cell! :(")
 
     # Convert grid coordinate to map index
     # ------------------------------------------------------------------------------
