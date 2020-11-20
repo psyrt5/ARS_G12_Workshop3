@@ -17,7 +17,7 @@ class Workshop6:
         #Subscribing and publishing to the relevant topics
         self.odom_sub = rospy.Subscriber("odom", Odometry, self.odom_callback)
         
-        #Initialising all variable values
+        #Initialising all pose variable values
         self.pose = Pose2D()   
         self.r = rospy.Rate(30)
         
@@ -26,9 +26,9 @@ class Workshop6:
         except rospy.ROSInterruptException:
             rospy.loginfo("Action terminated.")
     
+    #Function which prints a menu option of where to set the next waypoint
     def choose_location(self):
-        self.choice='q'
-
+	
         rospy.loginfo("|-----------------------------------|")
         rospy.loginfo("|PRESS A KEY:")
         rospy.loginfo("|'0': Room 1-0 ")
@@ -40,45 +40,52 @@ class Workshop6:
         rospy.loginfo("|'q': Quit ")
         rospy.loginfo("|-------------------------------|")
         rospy.loginfo("|WHERE TO GO?")
-
+	
+	#Setting the users choice to the variable self.choice
         self.choice = input()
             
     def run(self):
 
-        # declare the coordinates of interest
+        # Declare the pairs of x,y coordinates for each room
         self.xRoom1_0 = -2.789
         self.yRoom1_0 = 3.141
+
         self.xRoom1_1 =-6.230
         self.yRoom1_1 = 3.998
+
         self.xRoom1_2 =-6.325
         self.yRoom1_2 = -0.511
+
         self.xRoom2_0 = 4.456
         self.yRoom2_0  = 1.533
+
         self.xRoom2_1 = 1.146
         self.yRoom2_1  = 4.568
+
         self.xRoom2_2 = 6.268
         self.yRoom2_2  = -1.240
+
+	#Variable which is false until the goal is reached
         self.goalReached = False
 
+	#Intialising variables for task 4
         self.current_x = self.pose.x
         self.current_y = self.pose.y
         self.current_gx = 0
         self.current_gy = 0
-        
+
         self.size = 20
-
         array_size = self.size * self.size + self.size
-
         self.grid = [-1] * array_size
 
+
+	#Running the initial choice menu
         self.choose_location()
         
-
-        #print(size * size + size)
-        while not rospy.is_shutdown() and self.choice != 'q':
-            
+        while not rospy.is_shutdown() and self.choice != 'q':    
             self.move()
     
+    #A function which continuously updates the goalReached variable
     def move(self):
         if (self.choice == 0):
             self.goalReached = self.moveToGoal(self.xRoom1_0, self.yRoom1_0)
@@ -102,21 +109,23 @@ class Workshop6:
 
                 self.goalReached = self.moveToGoal(self.xRoom2_2, self.yRoom2_2)
 
-        if (self.choice!='q'):
+        if (self.choice=='q'):
 
             if (self.goalReached):
-                rospy.loginfo("Congratulations!")
+                rospy.loginfo("Congratulations - Goal Reached!")
                 self.choose_location()
             #rospy.spin()
             else:
-                rospy.loginfo("Hard Luck!")
+                rospy.loginfo("Hard Luck - Goal Not Reached!")
                 self.choose_location()
     
+
+    #This function returns true/false if goal is met or not
     def moveToGoal(self,xGoal,yGoal):
-        #define a client for to send goal requests to the move_base server through a SimpleActionClient
+        #Define a client for to send goal requests to the move_base server through a SimpleActionClient
         ac = actionlib.SimpleActionClient("move_base", MoveBaseAction)
 
-        #wait for the action server to come up
+        #Wait for the action server to come up
         while(not ac.wait_for_server(rospy.Duration.from_sec(5.0))):
             rospy.loginfo("Waiting for the move_base action server to come up")
 
@@ -127,8 +136,8 @@ class Workshop6:
         goal.target_pose.header.frame_id = "map"
         goal.target_pose.header.stamp = rospy.Time.now()
 
-        # moving towards the goal*/
 
+        #Setting goal position of robot
         goal.target_pose.pose.position =  Point(xGoal,yGoal,0)
         goal.target_pose.pose.orientation.x = 0.0
         goal.target_pose.pose.orientation.y = 0.0
@@ -140,7 +149,9 @@ class Workshop6:
 
         #ac.wait_for_result(rospy.Duration(60))
 
+	#While the goal hasn't been reached
         while (ac.get_state() != GoalStatus.SUCCEEDED):
+	    #If statement to limit consistently calling functions when the robot hasn't moved significantly
             if(round(self.pose.x,2) !=round(self.current_x,2) or round(self.pose.y,2) !=round(self.current_y,2)):
                 self.to_grid(self.pose.x,self.pose.y,-8,-8,self.size,self.size,1)
                 self.current_x = self.pose.x
@@ -149,7 +160,7 @@ class Workshop6:
         rospy.loginfo("You have reached the destination")
         return True
 
-   #If you are initialising the bottom left grid cell to 1,1 not 0,0
+    #If you are initialising the bottom left grid cell to 1,1 not 0,0
     def to_grid(self, px, py, origin_x, origin_y, size_x, size_y, resolution):
         gx = ceil((px-origin_x)/resolution)
         gy = ceil((py-origin_y)/resolution)
@@ -163,15 +174,11 @@ class Workshop6:
             self.current_gx = gx
             self.current_gy = gy
         
-        #print (gy ,gx )
-        #if(gx>(size_x/resolution) && gy>(size_y/resolution))
 
    #If you are initialising the bottom left grid cell to 1,1 not 0,0
     def to_world(self, gx, gy, origin_x, origin_y, size_x, size_y, resolution):
         px = (gx*resolution + origin_x) + (resolution/2)
         py = (gy*resolution + origin_y) + (resolution/2)
-        print (py ,px )
-      #if(gx>(size_x/resolution) && gy>(size_y/resolution))
 
    #Odom Callback which returns values of pose orientation which we translate to self.pose
     def odom_callback(self, msg):
